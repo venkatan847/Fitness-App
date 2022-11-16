@@ -2,10 +2,10 @@ import 'package:fitness_app/modal/workout_class.dart';
 import 'package:template_package/template_package.dart';
 import 'package:fitness_app/modal/program_class.dart';
 
-class ClockInTapEvent extends BaseBlocEvent {
-  final String clockIn;
+class StartWorkoutEvent extends BaseBlocEvent {
+  final Workout workout;
 
-  ClockInTapEvent(super.analyticEventName, this.clockIn);
+  StartWorkoutEvent(super.analyticEventName, this.workout);
 }
 
 class ClockOutTapEvent extends BaseBlocEvent {
@@ -36,4 +36,10 @@ class ProgramTapEvent extends BaseBlocEvent {
   final String title;
 
   ProgramTapEvent(super.analyticEventName, this.title);
+}
+
+class StopWorkoutTapEvent extends BaseBlocEvent {
+  final Workout workout;
+
+  StopWorkoutTapEvent(super.analyticEventName, this.workout);
 }

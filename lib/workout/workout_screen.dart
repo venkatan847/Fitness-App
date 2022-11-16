@@ -1,3 +1,12 @@
+import 'dart:async';
+import 'package:fitness_app/fitnessBlock/work_event.dart';
+import 'package:fitness_app/fitnessBlock/work_state.dart';
+import 'package:fitness_app/modal/program_class.dart';
+import 'package:fitness_app/modal/workout_class.dart';
+import 'package:flutter/material.dart';
+import 'package:template_package/base_widget/base_widget.dart';
+import 'package:template_package/template_package.dart';
+
 class MyHomePage extends BaseWidget {
   MyHomePage(BaseBloc Function() getBloc, {super.key, required this.title})
       : super(getBloc);
@@ -9,7 +18,7 @@ class MyHomePage extends BaseWidget {
 }
 
 class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
-  Timer? timer;
+  ScrollController scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -17,10 +26,13 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
         stream: bloc.getStreamOfType<ProgramState>(),
         builder: (context, AsyncSnapshot<ProgramState> snapshot) {
           if (snapshot.data == null) return Container();
+          final data = snapshot.data!.program;
           return Scaffold(
               appBar: AppBar(title: Text(widget.title)),
               body: ListView(
-                  padding: EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+                  controller: scrollController,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
                   children: [
                     const Text('Select Program',
                         style: TextStyle(
@@ -29,14 +41,15 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
                     SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                            children: snapshot.data!.program
-                                .map((e) =>
-                                programCard(e.title ?? '',
-                                    e.imgPath ?? '', e.workout ?? [], e))
+                            children: data
+                                .map((e) => Column(children: [
+                                      programCard(e.title ?? '',
+                                          e.imgPath ?? '', e.workout, e)
+                                    ]))
                                 .toList())),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     workout(),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     selectedWorkout()
                   ]));
         });
@@ -46,7 +59,6 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
       Program program) {
     return InkWell(
         onTap: () {
-          // bloc.event.add(WorkoutEvent('WorkoutEvent', workoutList));
           bloc.event.add(ProgramTapEvent('ProgramTapEvent', title));
         },
         child: Container(
@@ -57,7 +69,7 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(
                     color:
-                    program.isSelect ? Colors.orange : Colors.transparent,
+                        program.isSelect ? Colors.orange : Colors.transparent,
                     width: 2)),
             child: Column(children: [
               Expanded(
@@ -68,11 +80,11 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
                   child: Text(title,
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.bold))),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text('${workoutList.length} Program',
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w400)),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
             ])));
   }
 
@@ -80,6 +92,8 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
     return InkWell(
         onTap: () {
           bloc.event.add(WorkoutTapEvent('WorkoutEvent', workout));
+          scrollController.animateTo(scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 10), curve: Curves.easeInOut);
         },
         child: Container(
             margin: const EdgeInsets.only(left: 10),
@@ -106,51 +120,18 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
         });
   }
 
-  Widget clockIn() {
-    return StreamBuilder(
-        stream: bloc.getStreamOfType<ClockInState>(),
-        builder: (context, AsyncSnapshot<ClockInState> snapshot) {
-          if (snapshot.data == null || snapshot.data!.clockIn.isEmpty) {
-            return Container();
-          }
-          getCount(snapshot.data!.clockIn);
-          return Column(children: [
-            const SizedBox(height: 30),
-            displayCount(),
-            const SizedBox(height: 30)
-          ]);
-        });
-  }
-
   Widget displayCount() {
     return StreamBuilder(
-        stream: bloc.getStreamOfType<DisplayCountState>(),
-        builder: (context, AsyncSnapshot<DisplayCountState> snapshot) {
+        stream: bloc.getStreamOfType<RecordState>(),
+        builder: (context, AsyncSnapshot<RecordState> snapshot) {
           if (snapshot.data == null) return Container();
-          // count = snapshot.data!.count;
           return Text(snapshot.data!.count,
               style:
-              const TextStyle(fontSize: 30, fontWeight: FontWeight.bold));
+                  const TextStyle(fontSize: 30, fontWeight: FontWeight.bold));
         });
   }
 
-  getCount(String clockIn) {
-    try {
-      List<String> time = [];
-      timer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (mounted) {
-          time = DateTime.now()
-              .difference(DateTime.parse(clockIn))
-              .toString()
-              .split(':');
-          bloc.event.add(GetClockInTime('analytics',
-              "${time[0]} : ${time[1]} : ${time[2].substring(0, 2)}"));
-        }
-      });
-    } catch (e) {}
-  }
-
-  Widget StartButton(bool hasStarted) {
+  Widget startButton(Workout data) {
     return SizedBox(
         height: 54,
         width: 150,
@@ -160,10 +141,14 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
                 shape: MaterialStateProperty.all(RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15)))),
             onPressed: () async {
-              bloc.event.add(ClockInTapEvent('analytics', "${DateTime.now()}"));
+              if (data.hasStarted) {
+                bloc.event.add(StopWorkoutTapEvent('Stop workout', data));
+              } else {
+                bloc.event.add(StartWorkoutEvent('analytics', data));
+              }
             },
-            child: Text(hasStarted ? 'Stop' : 'Start',
-                style: TextStyle(fontSize: 20, letterSpacing: 0.7))));
+            child: Text(data.hasStarted ? 'Stop' : 'Start',
+                style: const TextStyle(fontSize: 20, letterSpacing: 0.7))));
   }
 
   Widget selectedWorkout() {
@@ -178,21 +163,32 @@ class _MyHomePageState extends BaseState<MyHomePage, BaseBloc> {
                 Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(data.title ?? '',
-                          style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      Text(
-                          ' Set Time: ${data?.setTime?.toStringAsFixed(0) ??
-                              0.0} Minutes',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      SizedBox(
+                          width: 200,
+                          child: Text(data.title ?? '',
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold))),
+                      Column(children: [
+                        Text(
+                            ' Set Time: ${data.setTime?.toStringAsFixed(0) ?? 0.0} Minutes',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        if (data.hasStarted != true &&
+                            data.recordedTime.isNotEmpty)
+                          Text('Recorded time: ${data.recordedTime}',
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold))
+                      ])
                     ]),
-                SizedBox(height: 20),
-                Image.asset(data.imgPath ?? ''),
-                SizedBox(height: 20),
-                Center(child: StartButton(data.hasStarted ?? false)),
-                SizedBox(height: 10),
-                displayCount(),
+                const SizedBox(height: 20),
+                ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.asset(data.imgPath ?? '')),
+                const SizedBox(height: 20),
+                Center(child: startButton(data)),
+                const SizedBox(height: 10),
+                if (data.hasStarted) Center(child: displayCount()),
+                const SizedBox(height: 20),
               ]);
         });
   }
