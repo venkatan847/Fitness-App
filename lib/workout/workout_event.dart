@@ -1,6 +1,5 @@
 import 'package:fitness_app/modal/workout_class.dart';
 import 'package:template_package/template_package.dart';
-import 'package:fitness_app/modal/program_class.dart';
 
 class StartWorkoutEvent extends BaseBlocEvent {
   final Workout workout;
@@ -42,4 +41,15 @@ class StopWorkoutTapEvent extends BaseBlocEvent {
   final Workout workout;
 
   StopWorkoutTapEvent(super.analyticEventName, this.workout);
+}
+
+class SelectWeightTapEvent extends BaseBlocEvent {
+  final int weight;
+  final Workout workout;
+
+  SelectWeightTapEvent(super.analyticEventName, this.weight, this.workout);
+}
+
+class WorkoutHistoryTapEvent extends BaseBlocEvent {
+  WorkoutHistoryTapEvent(super.analyticEventName);
 }

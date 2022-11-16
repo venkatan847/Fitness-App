@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:base_bloc/bloc/event.dart';
-import 'package:fitness_app/fitnessBlock/work_event.dart';
-import 'package:fitness_app/fitnessBlock/work_state.dart';
 import 'package:fitness_app/modal/program_class.dart';
 import 'package:fitness_app/modal/workout_class.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:fitness_app/navigation/navigate_to_workout_history_screen.dart';
+import 'package:fitness_app/workout/workout_event.dart';
+import 'package:fitness_app/workout/workout_state.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:template_package/template_bloc/template_bloc.dart';
@@ -15,30 +16,32 @@ class WorkBloc extends TemplateBloc {
   BehaviorSubject workoutController = BehaviorSubject<WorkoutState>();
   BehaviorSubject controller = BehaviorSubject<SelectedWorkoutState>();
   BehaviorSubject recordController = BehaviorSubject<RecordState>();
+  BehaviorSubject suggestSetsController = BehaviorSubject<SuggestSetState>();
   Timer? timer;
 
   //   //Barbell row, Bench press, Shoulder press,Deadlift, Squat
   List<Program> programList = [
     Program("Barbell Row", "assets/program_images/barbell_row.jpeg", false, [
-      Workout("Barbell Row", false, "0", false, 'assets/barbell_row.GIF', 5),
+      Workout("Barbell Row", false, "0", false, 'assets/barbell_row.GIF', 0, 5),
     ]),
     Program("Bench press", "assets/program_images/Bench_press.jpeg", false, [
-      Workout("Bench Press", false, "0", false, 'assets/bench_press.GIF', 5),
+      Workout("Bench Press", false, "0", false, 'assets/bench_press.GIF', 0, 5),
     ]),
     Program("Shoulder", "assets/program_images/shoulder_press.jpeg", false, [
       Workout("Knee Shoulder Press", false, "0", false,
-          'assets/knee_shoulder_press.GIF', 5),
+          'assets/knee_shoulder_press.GIF', 0, 5),
       Workout("Stand Shoulder Press", false, "0", false,
-          'assets/stand_shoulder_press.GIF', 5)
+          'assets/stand_shoulder_press.GIF', 0, 5)
     ]),
     Program("DeadLift", "assets/program_images/deadLift.webp", false, [
-      Workout("DeadLift", false, "0", false, 'assets/deadLift.gif', 5),
+      Workout("DeadLift", false, "0", false, 'assets/deadLift.gif', 0, 5),
       Workout("kettlebell-Deadlift", false, "0", false,
-          'assets/Kettlebell-Deadlift.gif', 5)
+          'assets/Kettlebell-Deadlift.gif', 0, 5)
     ]),
     Program("Squat", "assets/program_images/squat.webp", false, [
-      Workout("Stand Squat", false, "0", false, 'assets/stand_squat.GIF', 5),
-      Workout("Seated Squat", false, "0", false, 'assets/seated_squat.GIF', 5),
+      Workout("Stand Squat", false, "0", false, 'assets/stand_squat.GIF', 0, 5),
+      Workout(
+          "Seated Squat", false, "0", false, 'assets/seated_squat.GIF', 0, 5),
     ]),
   ];
 
@@ -47,6 +50,7 @@ class WorkBloc extends TemplateBloc {
       programController.stream,
       workoutController.stream,
       recordController.stream,
+      suggestSetsController.stream,
       controller.stream
     ]);
     init();
@@ -66,7 +70,57 @@ class WorkBloc extends TemplateBloc {
       startWorkout(event);
     } else if (event is StopWorkoutTapEvent) {
       stopWorkout(event);
+    } else if (event is SelectWeightTapEvent) {
+      suggestSets(event);
+    } else if (event is WorkoutHistoryTapEvent) {
+      history();
     }
+  }
+
+  history() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    List<Program> program = [];
+    List<Program> workoutList = [];
+    if (prefs.getString('WorkoutData') != null) {
+      List<dynamic> data = jsonDecode(prefs.getString('WorkoutData') ?? '');
+      for (var element in data) {
+        program.add(Program.fromJson(element));
+      }
+    }
+    for (var element in program) {
+      for (var workout in element.workout) {
+        if (workout.recordedTime != "0") {
+          workoutList.add(element);
+        }
+      }
+    }
+
+    sinkState?.add(NavigateToWorkoutHistoryScreen(
+        program: workoutList,
+        onPop: (data) {
+          if (data != null) {
+            List<Program> program = [];
+            List<Program> workoutList = [];
+            if (prefs.getString('WorkoutData') != null) {
+              List<dynamic> data =
+                  jsonDecode(prefs.getString('WorkoutData') ?? '');
+              for (var element in data) {
+                program.add(Program.fromJson(element));
+              }
+            }
+            for (var element in program) {
+              for (var workout in element.workout) {
+                if (workout.title == data.title) {
+                  element.isSelect = true;
+                  workoutController.sink.add(WorkoutState(element.workout));
+                  controller.sink.add(SelectedWorkoutState(workout));
+                }
+              }
+            }
+          }
+          programController.sink.add(ProgramState(program));
+        }));
   }
 
   void program(ProgramTapEvent event) async {
@@ -213,12 +267,46 @@ class WorkBloc extends TemplateBloc {
     return "$hours : $minutes : $seconds";
   }
 
+  void suggestSets(SelectWeightTapEvent event) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    List<Program> program = [];
+    if (prefs.getString('WorkoutData') != null) {
+      List<dynamic> data = jsonDecode(prefs.getString('WorkoutData') ?? '');
+      for (var element in data) {
+        program.add(Program.fromJson(element));
+      }
+    }
+    for (var element in program) {
+      for (var workout in element.workout) {
+        if (workout.title == event.workout.title) {
+          workout.weight = event.weight;
+        }
+      }
+    }
+    prefs.setString('WorkoutData', jsonEncode(program));
+    if (event.weight <= 30 && event.weight > 10) {
+      suggestSetsController.sink.add(SuggestSetState(1));
+    } else if (event.weight <= 50 && event.weight > 30) {
+      suggestSetsController.sink.add(SuggestSetState(2));
+    } else if (event.weight <= 70 && event.weight > 50) {
+      suggestSetsController.sink.add(SuggestSetState(3));
+    } else if (event.weight <= 90 && event.weight > 70) {
+      suggestSetsController.sink.add(SuggestSetState(4));
+    } else if (event.weight <= 110 && event.weight > 90) {
+      suggestSetsController.sink.add(SuggestSetState(5));
+    } else if (event.weight <= 150 && event.weight > 110) {
+      suggestSetsController.sink.add(SuggestSetState(6));
+    }
+  }
+
   @override
   dispose() {
     programController.close();
     workoutController.close();
     controller.close();
     timer?.cancel();
+    suggestSetsController.close();
     return super.dispose();
   }
 }

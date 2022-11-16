@@ -26,3 +26,9 @@ class RecordState extends BaseBlocDataState {
 
   RecordState(this.workout, this.count);
 }
+
+class SuggestSetState extends BaseBlocDataState {
+  final int numberOfSets;
+
+  SuggestSetState(this.numberOfSets);
+}

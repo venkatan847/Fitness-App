@@ -2,7 +2,6 @@ import 'package:dependency_provider/base_sub_module.dart';
 import 'package:dependency_provider/dependency_module/dependency_module.dart';
 import 'package:fitness_app/dependency/sub_modules/bloc_sub_module.dart';
 import 'package:fitness_app/dependency/sub_modules/core_sub_modules.dart';
-import 'package:fitness_app/dependency/sub_modules/ebr_sub_module.dart';
 import 'package:fitness_app/dependency/sub_modules/repostory_sub_module.dart';
 import 'package:flutter/material.dart';
 
@@ -16,8 +15,6 @@ class DependencyModule extends BaseDependencyModule {
     return [
       CoreSubModule(),
       BlocSubModule(),
-      RepositorySubModule(),
-      EBRSubModule()
     ];
   }
 }
