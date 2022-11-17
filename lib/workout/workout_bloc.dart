@@ -11,12 +11,14 @@ import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:template_package/template_bloc/template_bloc.dart';
 
-class WorkBloc extends TemplateBloc {
+class WorkoutBloc extends TemplateBloc {
   BehaviorSubject programController = BehaviorSubject<ProgramState>();
   BehaviorSubject workoutController = BehaviorSubject<WorkoutState>();
   BehaviorSubject controller = BehaviorSubject<SelectedWorkoutState>();
   BehaviorSubject recordController = BehaviorSubject<RecordState>();
   BehaviorSubject suggestSetsController = BehaviorSubject<SuggestSetState>();
+  BehaviorSubject workHistoryController =
+      BehaviorSubject<WorkoutHistoryState>();
   Timer? timer;
 
   //   //Barbell row, Bench press, Shoulder press,Deadlift, Squat
@@ -45,12 +47,13 @@ class WorkBloc extends TemplateBloc {
     ]),
   ];
 
-  WorkBloc(super.analytics) {
+  WorkoutBloc(super.analytics) {
     registerStreams([
       programController.stream,
       workoutController.stream,
       recordController.stream,
       suggestSetsController.stream,
+      workHistoryController.stream,
       controller.stream
     ]);
     init();
@@ -58,6 +61,7 @@ class WorkBloc extends TemplateBloc {
 
   void init() {
     initialise();
+    initialiseWorkHistory();
   }
 
   @override
@@ -74,41 +78,29 @@ class WorkBloc extends TemplateBloc {
       suggestSets(event);
     } else if (event is WorkoutHistoryTapEvent) {
       history();
+    } else if (event is DeleteWorkoutTapEvent) {
+      deleteWorkout(event);
     }
   }
 
   history() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    List<Program> program = [];
-    List<Program> workoutList = [];
-    if (prefs.getString('WorkoutData') != null) {
-      List<dynamic> data = jsonDecode(prefs.getString('WorkoutData') ?? '');
-      for (var element in data) {
-        program.add(Program.fromJson(element));
-      }
-    }
+    List<Program> program = await workoutData();
+    List<Program> workData = [];
     for (var element in program) {
       for (var workout in element.workout) {
         if (workout.recordedTime != "0") {
-          workoutList.add(element);
+          workData.add(element);
         }
       }
     }
 
     sinkState?.add(NavigateToWorkoutHistoryScreen(
-        program: workoutList,
-        onPop: (data) {
+        program: workData,
+        onPop: (data) async {
           if (data != null) {
-            List<Program> program = [];
-            List<Program> workoutList = [];
-            if (prefs.getString('WorkoutData') != null) {
-              List<dynamic> data =
-                  jsonDecode(prefs.getString('WorkoutData') ?? '');
-              for (var element in data) {
-                program.add(Program.fromJson(element));
-              }
-            }
+            List<Program> program = await workoutData();
             for (var element in program) {
               for (var workout in element.workout) {
                 if (workout.title == data.title) {
@@ -270,13 +262,9 @@ class WorkBloc extends TemplateBloc {
   void suggestSets(SelectWeightTapEvent event) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    List<Program> program = [];
-    if (prefs.getString('WorkoutData') != null) {
-      List<dynamic> data = jsonDecode(prefs.getString('WorkoutData') ?? '');
-      for (var element in data) {
-        program.add(Program.fromJson(element));
-      }
-    }
+    List<Program> program = await workoutData();
+    ;
+
     for (var element in program) {
       for (var workout in element.workout) {
         if (workout.title == event.workout.title) {
@@ -300,6 +288,44 @@ class WorkBloc extends TemplateBloc {
     }
   }
 
+  void initialiseWorkHistory() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    List<Program> program = await workoutData();
+    List<Program> workData = [];
+    for (var element in program) {
+      for (var workout in element.workout) {
+        if (workout.recordedTime != "0") {
+          workData.add(element);
+        }
+      }
+    }
+    workHistoryController.sink.add(WorkoutHistoryState(workData));
+  }
+
+  void deleteWorkout(DeleteWorkoutTapEvent event) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    List<Program> program = await workoutData();
+    for (var element in program) {
+      for (var workout in element.workout) {
+        if (workout.title == event.workout.title) {
+          workout.recordedTime = "0";
+        }
+      }
+    }
+    prefs.setString('WorkoutData', jsonEncode(program));
+    List<Program> workData = [];
+    for (var element in program) {
+      for (var workout in element.workout) {
+        if (workout.recordedTime != "0") {
+          workData.add(element);
+        }
+      }
+    }
+    workHistoryController.sink.add(WorkoutHistoryState(workData));
+  }
+
   @override
   dispose() {
     programController.close();
@@ -307,6 +333,7 @@ class WorkBloc extends TemplateBloc {
     controller.close();
     timer?.cancel();
     suggestSetsController.close();
+    workHistoryController.close();
     return super.dispose();
   }
 }

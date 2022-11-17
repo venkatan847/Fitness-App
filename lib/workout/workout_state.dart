@@ -32,3 +32,9 @@ class SuggestSetState extends BaseBlocDataState {
 
   SuggestSetState(this.numberOfSets);
 }
+
+class WorkoutHistoryState extends BaseBlocDataState {
+  List<Program> program;
+
+  WorkoutHistoryState(this.program);
+}

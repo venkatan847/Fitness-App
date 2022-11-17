@@ -34,26 +34,7 @@ class _MyHomePageState extends BaseState<WorkoutScreen, BaseBloc> {
                   padding:
                       const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
                   children: [
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          selectProgramText(),
-                          InkWell(
-                              onTap: () {
-                                bloc.event.add(
-                                    WorkoutHistoryTapEvent('workout history'));
-                              },
-                              child: Container(
-                                  alignment: Alignment.center,
-                                  height: 40,
-                                  width: 100,
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(15),
-                                      color: Colors.red),
-                                  child: const Text('History',
-                                      style: TextStyle(
-                                          color: Colors.white, fontSize: 20))))
-                        ]),
+                    titleAndHistoryButton(),
                     const SizedBox(height: 20),
                     programs(data),
                     const SizedBox(height: 20),
@@ -62,6 +43,27 @@ class _MyHomePageState extends BaseState<WorkoutScreen, BaseBloc> {
                     selectedWorkout()
                   ]));
         });
+  }
+
+  Widget titleAndHistoryButton() {
+    return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [selectProgramText(), historyButton()]);
+  }
+
+  InkWell historyButton() {
+    return InkWell(
+        onTap: () {
+          bloc.event.add(WorkoutHistoryTapEvent('workout history'));
+        },
+        child: Container(
+            alignment: Alignment.center,
+            height: 40,
+            width: 100,
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15), color: Colors.red),
+            child: const Text('History',
+                style: TextStyle(color: Colors.white, fontSize: 20))));
   }
 
   Widget programs(List<Program> data) {

@@ -11,7 +11,7 @@ class BlocSubModule extends ISubModule {
         .singleWhere((element) => element is CoreSubModule) as CoreSubModule;
   }
 
-  WorkBloc workBloc() {
-    return WorkBloc(_coreSubModule.analytics());
+  WorkoutBloc workBloc() {
+    return WorkoutBloc(_coreSubModule.analytics());
   }
 }

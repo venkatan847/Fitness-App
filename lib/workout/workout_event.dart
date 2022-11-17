@@ -53,3 +53,9 @@ class SelectWeightTapEvent extends BaseBlocEvent {
 class WorkoutHistoryTapEvent extends BaseBlocEvent {
   WorkoutHistoryTapEvent(super.analyticEventName);
 }
+
+class DeleteWorkoutTapEvent extends BaseBlocEvent {
+  final Workout workout;
+
+  DeleteWorkoutTapEvent(super.analyticEventName, this.workout);
+}
